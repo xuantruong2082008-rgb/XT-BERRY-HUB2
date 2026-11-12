@@ -1,0 +1,541 @@
+-- ========================================================
+-- XT BERRY HUB - BLUE EDITION (VIETNAMESE / ENGLISH SUPPORT)
+-- ========================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local targetGui = pcall(function() return CoreGui.Name end) and CoreGui or player:WaitForChild("PlayerGui")
+
+local oldGui = targetGui:FindFirstChild("XTBerryHub")
+if oldGui then
+	oldGui:Destroy()
+end
+
+-- Bảng trạng thái tính năng & ngôn ngữ (Mặc định Tiếng Việt)
+local State = {
+	Language = "VN", -- "VN" hoặc "EN"
+	AutoFarm = false,
+	FastAttack = false,
+	BringMob = false,
+	AutoStats = false,
+	SelectedStat = "Melee",
+	FruitESP = false,
+	PlayerESP = false,
+	AutoCollectFruit = false,
+	SpeedHack = false,
+	NoClip = false,
+	UIEffects = true
+}
+
+local COLORS = {
+	Background = Color3.fromRGB(10, 17, 31),
+	Panel = Color3.fromRGB(16, 28, 48),
+	Panel2 = Color3.fromRGB(21, 39, 65),
+	Blue = Color3.fromRGB(35, 145, 255),
+	BlueDark = Color3.fromRGB(20, 95, 190),
+	Text = Color3.fromRGB(235, 244, 255),
+	Muted = Color3.fromRGB(145, 166, 193),
+	Green = Color3.fromRGB(55, 205, 140),
+	Off = Color3.fromRGB(65, 82, 105),
+	Stroke = Color3.fromRGB(43, 75, 112),
+}
+
+local tabs = {
+	"Main", "Farming", "Level Farm", "Mastery", "Fruit", "Material",
+	"Boss", "Raid", "Sea Events", "Mirage Island", "Race V2-V4",
+	"Dojo", "Prehistoric", "Leviathan", "Fighting Style", "Sword",
+	"Gun", "ESP", "Teleport", "Shop", "PvP", "Misc", "Settings"
+}
+
+-- Hệ thống từ điển song ngữ (Tiếng Việt & English)
+local Dictionary = {
+	VN = {
+		WelcomeTitle = "Chào mừng đến với XT BERRY HUB",
+		WelcomeDesc = "Phiên bản màu xanh • Tối ưu hóa cho Delta X & Luau",
+		ChooseTab = "Chọn một tính năng ở bên dưới.",
+		Ready = "Đã sẵn sàng trên Delta X.",
+		FastAttackName = "Đánh nhanh (Fast Attack)",
+		FastAttackDesc = "Tăng tốc độ đánh thường liên tục không có thời gian hồi.",
+		BringMobName = "Gom quái (Bring Mob)",
+		BringMobDesc = "Kéo toàn bộ quái xung quanh lại gần để farm nhanh hơn.",
+		AntiAFKName = "Bật chống AFK",
+		AntiAFKDesc = "Tránh bị hệ thống đá ra ngoài khi treo máy 20 phút.",
+		AutoFarmName = "Tự động đánh quái gần nhất",
+		AutoFarmDesc = "Tự động bay đến bãi quái và tấn công liên tục.",
+		AutoStatsName = "Tự cộng điểm Cận chiến (Melee)",
+		AutoStatsDesc = "Tự động cộng điểm kỹ năng vào Melee mỗi giây.",
+		FruitESPName = "Định vị Trái Ác Quỷ (Fruit ESP)",
+		FruitESPDesc = "Hiển thị tên và vị trí trái ác quỷ xuất hiện trên bản đồ.",
+		AutoCollectFruitName = "Tự động nhặt Trái Ác Quỷ",
+		AutoCollectFruitDesc = "Tự động bay đến nhặt khi có trái rơi.",
+		PlayerESPName = "Định vị Người chơi (Player ESP)",
+		PlayerESPDesc = "Hiển thị tên và lượng máu của người chơi khác trên map.",
+		TpSafeZoneName = "Bay lên cao né đòn (Safe Sky)",
+		TpSafeZoneDesc = "Dịch chuyển lên độ cao 500 studs để hồi máu an toàn.",
+		RandomFruitName = "Mua Trái Ác Quỷ ngẫu nhiên",
+		RandomFruitDesc = "Gửi yêu cầu quay trái ngẫu nhiên từ NPC Gacha.",
+		SpeedHackName = "Tăng tốc chạy (Speed x3)",
+		SpeedHackDesc = "Tăng tốc độ di chuyển của nhân vật lên mức cao.",
+		NoClipName = "Đi xuyên tường (NoClip)",
+		NoClipDesc = "Vô hiệu hóa va chạm để di chuyển qua vật cản dễ dàng.",
+		RejoinName = "Vào lại máy chủ (Rejoin)",
+		RejoinDesc = "Kết nối lại vào server hiện tại.",
+		LangToggleName = "Ngôn ngữ hiển thị: Tiếng Việt",
+		LangToggleDesc = "Nhấn để chuyển đổi qua lại giữa Tiếng Việt và English.",
+		CloseUiName = "Đóng XT BERRY",
+		CloseUiDesc = "Tắt hoàn toàn bảng điều khiển script."
+	},
+	EN = {
+		WelcomeTitle = "Welcome to XT BERRY HUB",
+		WelcomeDesc = "Blue Edition • Optimized for Delta X & Luau",
+		ChooseTab = "Choose a control below.",
+		Ready = "Ready on Delta X.",
+		FastAttackName = "Fast Attack",
+		FastAttackDesc = "Boost normal attack speed without cooldown.",
+		BringMobName = "Bring Mob",
+		BringMobDesc = "Teleport nearby enemies together for faster farming.",
+		AntiAFKName = "Enable Anti-AFK",
+		AntiAFKDesc = "Prevent being kicked out after 20 minutes of inactivity.",
+		AutoFarmName = "Auto Farm Nearest",
+		AutoFarmDesc = "Automatically fly to mobs and attack continuously.",
+		AutoStatsName = "Auto Stats: Melee",
+		AutoStatsDesc = "Automatically allocate skill points into Melee.",
+		FruitESPName = "Fruit ESP",
+		FruitESPDesc = "Display names and locations of spawned Devil Fruits.",
+		AutoCollectFruitName = "Auto Collect Fruit",
+		AutoCollectFruitDesc = "Automatically fly and collect spawned fruits.",
+		PlayerESPName = "Player ESP",
+		PlayerESPDesc = "Display names and health bars of other players.",
+		TpSafeZoneName = "Teleport to Safe Sky",
+		TpSafeZoneDesc = "Teleport to an altitude of 500 studs to recover safely.",
+		RandomFruitName = "Random Devil Fruit",
+		RandomFruitDesc = "Request a random fruit pull from the Gacha NPC.",
+		SpeedHackName = "Speed Boost (x3)",
+		SpeedHackDesc = "Increase character movement speed significantly.",
+		NoClipName = "NoClip (Walk through walls)",
+		NoClipDesc = "Disable object collision to move through obstacles.",
+		RejoinName = "Rejoin Server",
+		RejoinDesc = "Reconnect to the current server instance.",
+		LangToggleName = "Language: English",
+		LangToggleDesc = "Click to switch between English and Vietnamese.",
+		CloseUiName = "Close XT BERRY",
+		CloseUiDesc = "Completely close the script interface."
+	}
+}
+
+local function L(key)
+	local langTable = Dictionary[State.Language] or Dictionary.VN
+	return langTable[key] or key
+end
+
+-- Định nghĩa các điều khiển trong từng tab sử dụng khóa từ điển (Key)
+local controls = {}
+local function ReloadControls()
+	controls = {
+		["Main"] = {
+			{type = "label", nameKey = "WelcomeTitle", descKey = "WelcomeDesc"},
+			{type = "toggle", id = "FastAttack", nameKey = "FastAttackName", descKey = "FastAttackDesc"},
+			{type = "toggle", id = "BringMob", nameKey = "BringMobName", descKey = "BringMobDesc"},
+			{type = "button", id = "AntiAFK", nameKey = "AntiAFKName", descKey = "AntiAFKDesc"},
+		},
+		["Farming"] = {
+			{type = "toggle", id = "AutoFarm", nameKey = "AutoFarmName", descKey = "AutoFarmDesc"},
+			{type = "toggle", id = "AutoStats", nameKey = "AutoStatsName", descKey = "AutoStatsDesc"},
+		},
+		["Level Farm"] = {
+			{type = "toggle", id = "AutoFarm", nameKey = "AutoFarmName", descKey = "AutoFarmDesc"},
+		},
+		["Fruit"] = {
+			{type = "toggle", id = "FruitESP", nameKey = "FruitESPName", descKey = "FruitESPDesc"},
+			{type = "toggle", id = "AutoCollectFruit", nameKey = "AutoCollectFruitName", descKey = "AutoCollectFruitDesc"},
+		},
+		["ESP"] = {
+			{type = "toggle", id = "PlayerESP", nameKey = "PlayerESPName", descKey = "PlayerESPDesc"},
+			{type = "toggle", id = "FruitESP", nameKey = "FruitESPName", descKey = "FruitESPDesc"},
+		},
+		["Teleport"] = {
+			{type = "button", id = "TpSafeZone", nameKey = "TpSafeZoneName", descKey = "TpSafeZoneDesc"},
+		},
+		["Shop"] = {
+			{type = "button", id = "RandomFruit", nameKey = "RandomFruitName", descKey = "RandomFruitDesc"},
+		},
+		["Misc"] = {
+			{type = "toggle", id = "SpeedHack", nameKey = "SpeedHackName", descKey = "SpeedHackDesc"},
+			{type = "toggle", id = "NoClip", nameKey = "NoClipName", descKey = "NoClipDesc"},
+			{type = "button", id = "Rejoin", nameKey = "RejoinName", descKey = "RejoinDesc"},
+		},
+		["Settings"] = {
+			{type = "button", id = "ToggleLang", nameKey = "LangToggleName", descKey = "LangToggleDesc"},
+			{type = "button", id = "CloseUI", nameKey = "CloseUiName", descKey = "CloseUiDesc"},
+		},
+	}
+end
+ReloadControls()
+
+-- ========================================================
+-- KHỞI TẠO GIAO DIỆN CHÍNH
+-- ========================================================
+local gui = Instance.new("ScreenGui")
+gui.Name = "XTBerryHub"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = targetGui
+
+local main = Instance.new("Frame", gui)
+main.Name = "Main"
+main.Size = UDim2.fromOffset(720, 465)
+main.Position = UDim2.new(0.5, -360, 0.5, -232)
+main.BackgroundColor3 = COLORS.Background
+main.BorderSizePixel = 0
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local mainStroke = Instance.new("UIStroke", main)
+mainStroke.Color = COLORS.Stroke
+mainStroke.Thickness = 1.3
+
+local top = Instance.new("Frame", main)
+top.Name = "TopBar"
+top.Size = UDim2.new(1, 0, 0, 48)
+top.BackgroundColor3 = COLORS.Panel
+top.BorderSizePixel = 0
+Instance.new("UICorner", top).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel", top)
+title.BackgroundTransparency = 1
+title.Position = UDim2.fromOffset(17, 0)
+title.Size = UDim2.new(1, -150, 1, 0)
+title.Font = Enum.Font.GothamBold
+title.Text = "XT BERRY HUB"
+title.TextColor3 = COLORS.Text
+title.TextSize = 19
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local subtitle = Instance.new("TextLabel", top)
+subtitle.BackgroundTransparency = 1
+subtitle.AnchorPoint = Vector2.new(1, 0.5)
+subtitle.Position = UDim2.new(1, -88, 0.5, 0)
+subtitle.Size = UDim2.fromOffset(115, 20)
+subtitle.Font = Enum.Font.Gotham
+subtitle.Text = "BLUE EDITION"
+subtitle.TextColor3 = COLORS.Muted
+subtitle.TextSize = 10
+
+local minimize = Instance.new("TextButton", top)
+minimize.Size = UDim2.fromOffset(32, 30)
+minimize.Position = UDim2.new(1, -76, 0, 9)
+minimize.BackgroundColor3 = COLORS.BlueDark
+minimize.Text = "-"
+minimize.TextColor3 = COLORS.Text
+minimize.TextSize = 20
+minimize.Font = Enum.Font.GothamBold
+Instance.new("UICorner", minimize).CornerRadius = UDim.new(0, 8)
+
+local close = Instance.new("TextButton", top)
+close.Size = UDim2.fromOffset(32, 30)
+close.Position = UDim2.new(1, -40, 0, 9)
+close.BackgroundColor3 = Color3.fromRGB(160, 55, 70)
+close.Text = "×"
+close.TextColor3 = COLORS.Text
+close.TextSize = 22
+close.Font = Enum.Font.GothamBold
+Instance.new("UICorner", close).CornerRadius = UDim.new(0, 8)
+
+local sidebar = Instance.new("Frame", main)
+sidebar.Name = "Sidebar"
+sidebar.Position = UDim2.fromOffset(10, 58)
+sidebar.Size = UDim2.new(0, 166, 1, -68)
+sidebar.BackgroundColor3 = COLORS.Panel
+sidebar.BorderSizePixel = 0
+Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 9)
+
+local tabScroll = Instance.new("ScrollingFrame", sidebar)
+tabScroll.Name = "Tabs"
+tabScroll.Position = UDim2.fromOffset(7, 8)
+tabScroll.Size = UDim2.new(1, -14, 1, -16)
+tabScroll.BackgroundTransparency = 1
+tabScroll.BorderSizePixel = 0
+tabScroll.ScrollBarThickness = 3
+tabScroll.ScrollBarImageColor3 = COLORS.Blue
+tabScroll.CanvasSize = UDim2.new()
+tabScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local tabLayout = Instance.new("UIListLayout", tabScroll)
+tabLayout.Padding = UDim.new(0, 5)
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local content = Instance.new("Frame", main)
+content.Name = "Content"
+content.Position = UDim2.fromOffset(186, 58)
+content.Size = UDim2.new(1, -196, 1, -68)
+content.BackgroundColor3 = COLORS.Panel
+content.BorderSizePixel = 0
+Instance.new("UICorner", content).CornerRadius = UDim.new(0, 9)
+
+local pageTitle = Instance.new("TextLabel", content)
+pageTitle.BackgroundTransparency = 1
+pageTitle.Position = UDim2.fromOffset(16, 10)
+pageTitle.Size = UDim2.new(1, -32, 0, 28)
+pageTitle.Font = Enum.Font.GothamBold
+pageTitle.Text = "Main"
+pageTitle.TextColor3 = COLORS.Text
+pageTitle.TextSize = 17
+pageTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local pageHint = Instance.new("TextLabel", content)
+pageHint.BackgroundTransparency = 1
+pageHint.Position = UDim2.fromOffset(16, 38)
+pageHint.Size = UDim2.new(1, -32, 0, 18)
+pageHint.Font = Enum.Font.Gotham
+pageHint.Text = L("Ready")
+pageHint.TextColor3 = COLORS.Muted
+pageHint.TextSize = 11
+pageHint.TextXAlignment = Enum.TextXAlignment.Left
+
+local itemScroll = Instance.new("ScrollingFrame", content)
+itemScroll.Name = "Items"
+itemScroll.Position = UDim2.fromOffset(10, 64)
+itemScroll.Size = UDim2.new(1, -20, 1, -74)
+itemScroll.BackgroundTransparency = 1
+itemScroll.BorderSizePixel = 0
+itemScroll.ScrollBarThickness = 4
+itemScroll.ScrollBarImageColor3 = COLORS.Blue
+itemScroll.CanvasSize = UDim2.new()
+itemScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local itemLayout = Instance.new("UIListLayout", itemScroll)
+itemLayout.Padding = UDim.new(0, 8)
+itemLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local itemPadding = Instance.new("UIPadding", itemScroll)
+itemPadding.PaddingBottom = UDim.new(0, 8)
+
+local currentTabName = "Main"
+local showTab -- Khai báo trước hàm
+
+local function notify(message)
+	pageHint.Text = message
+	task.delay(2.5, function()
+		if pageHint and pageHint.Parent then
+			pageHint.Text = L("Ready")
+		end
+	end)
+end
+
+-- ========================================================
+-- HÀM THỰC THI CHỨC NĂNG
+-- ========================================================
+local function TweenTo(targetCFrame, speed)
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local dist = (hrp.Position - targetCFrame.Position).Magnitude
+	local tween = TweenService:Create(hrp, TweenInfo.new(dist / (speed or 320), Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+	tween:Play()
+	return tween
+end
+
+local function ExecuteButtonAction(id)
+	if id == "CloseUI" then
+		gui:Destroy()
+	elseif id == "ToggleLang" then
+		-- Đổi ngôn ngữ qua lại VN <-> EN
+		State.Language = (State.Language == "VN") and "EN" or "VN"
+		ReloadControls()
+		showTab(currentTabName)
+		notify(State.Language == "VN" and "Đã đổi sang Tiếng Việt!" : "Switched to English!")
+	elseif id == "AntiAFK" then
+		player.Idled:Connect(function()
+			VirtualUser:CaptureController()
+			VirtualUser:ClickButton2(Vector2.new())
+		end)
+		notify(State.Language == "VN" and "Đã bật chống AFK!" or "Anti-AFK Activated!")
+	elseif id == "TpSafeZone" then
+		local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.CFrame = hrp.CFrame * CFrame.new(0, 500, 0)
+			notify(State.Language == "VN" and "Đã bay lên khu vực an toàn!" or "Teleported to Safe Sky!")
+		end
+	elseif id == "RandomFruit" then
+		pcall(function()
+			ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
+			notify(State.Language == "VN" and "Đã gửi yêu cầu quay trái ngẫu nhiên!" or "Requested Random Fruit!")
+		end)
+	elseif id == "Rejoin" then
+		game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+	end
+end
+
+-- ========================================================
+-- RENDER GIAO DIỆN
+-- ========================================================
+local function clearItems()
+	for _, child in ipairs(itemScroll:GetChildren()) do
+		if child:IsA("Frame") or child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+end
+
+local function makeRow(info)
+	local realName = L(info.nameKey)
+	local realDesc = L(info.descKey)
+
+	if info.type == "label" then
+		local label = Instance.new("TextLabel", itemScroll)
+		label.Size = UDim2.new(1, -4, 0, 58)
+		label.BackgroundColor3 = COLORS.Panel2
+		label.BorderSizePixel = 0
+		label.Font = Enum.Font.GothamBold
+		label.Text = realName .. "\n" .. realDesc
+		label.TextColor3 = COLORS.Text
+		label.TextSize = 13
+		label.TextWrapped = true
+		Instance.new("UICorner", label).CornerRadius = UDim.new(0, 8)
+		return
+	end
+
+	local row = Instance.new("Frame", itemScroll)
+	row.Size = UDim2.new(1, -4, 0, 62)
+	row.BackgroundColor3 = COLORS.Panel2
+	row.BorderSizePixel = 0
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+
+	local name = Instance.new("TextLabel", row)
+	name.BackgroundTransparency = 1
+	name.Position = UDim2.fromOffset(12, 7)
+	name.Size = UDim2.new(1, -125, 0, 22)
+	name.Font = Enum.Font.GothamSemibold
+	name.Text = realName
+	name.TextColor3 = COLORS.Text
+	name.TextSize = 12
+	name.TextXAlignment = Enum.TextXAlignment.Left
+
+	local desc = Instance.new("TextLabel", row)
+	desc.BackgroundTransparency = 1
+	desc.Position = UDim2.fromOffset(12, 30)
+	desc.Size = UDim2.new(1, -125, 0, 20)
+	desc.Font = Enum.Font.Gotham
+	desc.Text = realDesc
+	desc.TextColor3 = COLORS.Muted
+	desc.TextSize = 10
+	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.TextTruncate = Enum.TextTruncate.AtEnd
+
+	if info.type == "toggle" then
+		local isEnabled = State[info.id] or false
+		local toggle = Instance.new("TextButton", row)
+		toggle.Size = UDim2.fromOffset(76, 29)
+		toggle.Position = UDim2.new(1, -88, 0.5, -14)
+		toggle.BackgroundColor3 = isEnabled and COLORS.Green or COLORS.Off
+		toggle.Text = isEnabled and "ON" or "OFF"
+		toggle.TextColor3 = COLORS.Text
+		toggle.TextSize = 11
+		toggle.Font = Enum.Font.GothamBold
+		Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+
+		toggle.MouseButton1Click:Connect(function()
+			State[info.id] = not State[info.id]
+			local current = State[info.id]
+			toggle.Text = current and "ON" or "OFF"
+			local target = current and COLORS.Green or COLORS.Off
+			toggle.BackgroundColor3 = target
+			notify(realName .. (current and " [ON]" or " [OFF]"))
+		end)
+	else
+		local button = Instance.new("TextButton", row)
+		button.Size = UDim2.fromOffset(100, 30)
+		button.Position = UDim2.new(1, -112, 0.5, -15)
+		button.BackgroundColor3 = COLORS.BlueDark
+		button.Text = "RUN"
+		button.TextColor3 = COLORS.Text
+		button.TextSize = 11
+		button.Font = Enum.Font.GothamBold
+		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 7)
+
+		button.MouseButton1Click:Connect(function()
+			ExecuteButtonAction(info.id)
+		end)
+	end
+end
+
+showTab = function(tabName)
+	currentTabName = tabName
+	pageTitle.Text = tabName
+	clearItems()
+	local list = controls[tabName] or {}
+	for _, info in ipairs(list) do
+		makeRow(info)
+	end
+	if #list == 0 then
+		local empty = Instance.new("TextLabel", itemScroll)
+		empty.Size = UDim2.new(1, -4, 0, 54)
+		empty.BackgroundColor3 = COLORS.Panel2
+		empty.BorderSizePixel = 0
+		empty.Font = Enum.Font.Gotham
+		empty.Text = (State.Language == "VN") and ("Module [" .. tabName .. "] đang được phát triển.") or ("Module [" .. tabName .. "] coming soon.")
+		empty.TextColor3 = COLORS.Muted
+		empty.TextSize = 12
+		Instance.new("UICorner", empty).CornerRadius = UDim.new(0, 8)
+	end
+	for _, child in ipairs(tabScroll:GetChildren()) do
+		if child:IsA("TextButton") then
+			child.BackgroundColor3 = (child.Name == tabName) and COLORS.BlueDark or COLORS.Panel2
+		end
+	end
+end
+
+for index, tabName in ipairs(tabs) do
+	local button = Instance.new("TextButton", tabScroll)
+	button.Name = tabName
+	button.LayoutOrder = index
+	button.Size = UDim2.new(1, 0, 0, 32)
+	button.BackgroundColor3 = COLORS.Panel2
+	button.BorderSizePixel = 0
+	button.Text = "  " .. tabName
+	button.TextColor3 = COLORS.Text
+	button.TextSize = 11
+	button.Font = Enum.Font.GothamSemibold
+	button.TextXAlignment = Enum.TextXAlignment.Left
+	Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+	button.MouseButton1Click:Connect(function()
+		showTab(tabName)
+	end)
+end
+
+-- ========================================================
+-- CÁC LUỒNG CHẠY NGẦM (BACKGROUND LOOPS)
+-- ========================================================
+
+-- 1. Auto Farm & Bring Mob
+task.spawn(function()
+	while task.wait(0.15) do
+		if State.AutoFarm then
+			pcall(function()
+				local enemies = workspace:FindFirstChild("Enemies")
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if enemies and hrp then
+					local closestMob = nil
+					local shortestDist = math.huge
+					for _, mob in ipairs(enemies:GetChildren()) do
+						local hum = mob:FindFirstChild("Humanoid")
+						local mHrp = mob:FindFirstChild("HumanoidRootPart")
+						if hum and mHrp and hum.Health > 0 then
+							local d = (hrp.Position - mHrp.Position).Magnitude
+							if d < shortestDist then
+								shortestDist = d
+								closestMob = mob
+							end
+						end
+					end
+
+					if closestMob and closestMob:FindFirstChild("HumanoidRootPart") then
+						local targetHrp = closestMob.Humano
